@@ -1,0 +1,10 @@
+{
+    type: "image, text, file",
+    size: "3500000"
+    sender:
+    
+
+
+    message: <fileData>
+
+}

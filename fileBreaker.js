@@ -48,9 +48,10 @@ fsImage
     .then(function (files) {
         //First, send the header message
         var PORT = 3333;
-		var HOST = '10.102.167.182';
+		var HOST = '127.0.0.1';
 		var dgram = require('dgram');
         var client1 = dgram.createSocket('udp4');
+        client1.bind(PORT)
         console.log("attempting to send header...");
         headerJSON = {type:'file', numSegments: files.length};
         header = Buffer.from(JSON.stringify(headerJSON));
@@ -73,15 +74,19 @@ fsImage
                     return console.log(err);
                 }
                 var client = dgram.createSocket('udp4');
-                var jsonfile =  {fileName:FILENAME, data: data,segment_number: j, type:"file", numSegments: files.length};
+                var jsonfile =  {fileName:FILENAME, data: data,segmentNumber: j, type:"file", numSegments: files.length};
                 //console.log(jsonfile);
                 var message = Buffer.from(JSON.stringify(jsonfile))
-                client.send(message, 0, message.length, PORT+1, HOST, function(err, bytes) {
-                    if (err) console.log(err);
-                    console.log('UDP message sent to ' + HOST + ":" + (PORT+1) +"; message:" + message);
-                    
-                    client.close();
-                  });
+                client.on('message', function(fileMessage, remote) {
+                    console.log("received an ack");
+                    client.send(message, 0, message.length, 3334, HOST, setTimeout(function(err, bytes) {
+                        if (err) console.log(err);
+                        console.log('UDP message sent to ' + HOST + ":" + (PORT+1) +"; message:" + message);
+                        
+                        client.close();
+                      }, 3000));
+                });
+                
                   j++;
               });
 

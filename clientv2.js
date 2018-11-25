@@ -9,107 +9,195 @@ var fsImage = fss(FILENAME);
 var HOST1 = '127.0.0.1';
 var dgram = require('dgram');
 var N = 5;
-var windowStart = 0;
+var windowStart = 1;
 var packets_received;
+var packets_toSend =['UNINITIALIZED']; //contains the packets of data in file form.
 var acksReceived; //an integer containing the highest ack we have received
 var ackToSend = 0;
 var PORT = 3333;
 var HOST = '127.0.0.1';
+var timer;
+var timeout = 2000;
 
 var client = dgram.createSocket('udp4');
 client.bind(PORT);
 
-//This happens when the user hits send
-//var handshake = {}
-//client.send(handshake);
-//send them a handshake saying we have 10 packets
 
 
 
 
 
-function sendHandshakeInit(fileName, fileType, host, port) {
-    var fileList;
+
+function sendHandshakeInit(fileName, fileType, port, host) {
+    var handshake;
     var fsImage = fss(fileName);
-    setImmediate(() => {
-        fsImage.avgSliceAsFile({blockSize: 100})
+        fsImage.avgSliceAsFile({blockSize: 20})
         .then(function (files) {
-            fileList = files;
-            console.log("Changed fileList to the list of files we have.");
-            console.log(fileList);
+        handshake = {packetType: 'handshakeInit', fileName: fileName, fileType: fileType, numSegments:files.length};
+        handshake = Buffer.from(JSON.stringify(handshake));
+        packets_ToSend = new Array(files.length);
+        var i = 0;
+        console.log("files: " + files);
+
+        for (let file of files) {
+            data = fs.readFileSync(file) ;
+            var packet =    {
+            packetType: 'data', 
+            fileType: fileType, 
+            fileName: fileName,
+            numSegments: files.length, 
+            segmentNumber: i+1,
+            data: data
+            };
+            
+            packets_toSend[i] = Buffer.from(JSON.stringify(packet));
+            i+=1;
+        }
+
+       
+
+    }).then(function(files) {
+        //Now, packets_toSend is populated, and the handshakeInit can send.
+        console.log("This should happen at the very end.");
+        console.log("sending handshake...");
+        client.send(handshake, 0, handshake.length, port, host, function(err, bytes) {
+            console.log("Sent handshake: " + handshake.toString());
+            //client.close();
         });
-      });
+
+    }).catch(function (err) {
+        console.error(err);
+    });
     
-    console.log("Logging the filelist: " + fileList);
+
+    
 }
 
 
 function sendHandshakeAck(message, remote) {
-    var handshakeAck = {packetType : 'handshakeAck', numSegments: message.numSegments};
+    //message is already a JSON
+
+    var handshakeAck = {packetType : 'handshakeAck', fileName: message.fileName, numSegments: message.numSegments};
     handshakeAck = Buffer.from(JSON.stringify(handshakeAck));
     client.send(handshakeAck, 0, handshakeAck.length, remote.port, remote.host, function(err, bytes) {
         if (err) throw err;
         console.log('UDP handshake ack sent to ' + HOST + ":" + PORT);
       });
 }
-/*
 
-*/
+function reassembleFile(packets_received) {
+    console.log("We got the whole file! here it is: " + packets_received);
+    //store file
+}
 
 
+//args: timedout is a boolean, indicating if this was triggered by a timeout.
+function sendWindow(timedout, remote) {
+    //remote is the people who sent us the handshake ack
+    //if this was a timeout, then we want to increase the timer time
+    
+    if (timedout && timedout < 5000) {
+        timeout += 1000;
+    }
+
+    if (windowStart == packets_toSend.length) {
+        console.log("received all acks! closing...");
+        return;
+    }
+
+    console.log("NOW SENDING WINDOW");
+    //cancel any old timers that may be running.
+    clearTimeout(timer);
+    //resend the packets in the window
+    for (i = windowStart-1; i < windowStart+N-1 && i < packets_toSend.length; i++) {
+        console.log("i=" + i);
+        
+        client.send(packets_toSend[i], 0, packets_toSend[i].length, remote.port, remote.address, function(err, bytes) {
+            console.log("Sent packet to " +  remote.address + ":" + remote.port);
+        }); //send packet number i
+    }
+    //set a timer, to call this function again if we don't 
+    timer = setTimeout(sendWindow, timeout, true, remote);
+    
+}
 client.on('listening', function() {
-    var address = server.address('udp4');
+    var address = client.address('udp4');
     console.log('UDP Server listening on ' + address.address + ":" + address.port);
-  
+    
   });
 
 
+//#######################################################################################################################
+//#######################################################################################################################
 client.on('message', function(message, remote) {
     message = JSON.parse(message.toString());
-    console.log(remote.address + ':' + remote.port + ' - ' + JSON.parse(message.toString()).message);
+    console.log("received packet from " + remote.address + ':' + remote.port + ': ' + JSON.stringify(message));
     //RECEIVED HANDSHAKE INIT:
     if (message.packetType == 'handshakeInit') {
-        //packets_received = new Array(message.numSegments);
-        //sendHandshakeAck(message, remote);
+        packets_received = new Array(message.numSegments);
+        sendHandshakeAck(message, remote);
+
     }
     
     //RECEIVED HANDSHAKE ACK
     if (message.packetType == 'handshakeAck') {
-        //acks_received = null;
-        //send 10 packets using GO-Back-N
+        //start Go-Back-N
+        acks_received = null;
+        windowStart = 1;
+        sendWindow(false, remote);
     }  
 
     
-    //RECEIVED PACKET DATA
+    //RECEIVED DATA
     if (message.packetType == 'data') {
-    //send an acknowledgement, add it to our packets_received
-        //if message.segmentNumber = ackToSend + 1:
-            //ackToSend = message.segmentNumber;
-            //packets_received[message.segmentNumber-1] = message.data;
-        //client.send(ackToSend);
+        //send an acknowledgement, add it to our packets_received
+        console.log("we received a data packet");
+        //if it's the right packet, increment the ackToSend
+        if (message.segmentNumber = ackToSend + 1) {
+            ackToSend = message.segmentNumber;
+            packets_received[message.segmentNumber-1] = message;
+        }
+        var ack = {packetType: "dataAck", fileName: message.fileName, numSegments: message.numSegments, ackNumber: ackToSend};
+        ack = Buffer.from(JSON.stringify(ack));
+
+        //if we have all packets, reassemble te file
+        if (ackToSend == message.numSegments) {
+            reassembleFile(packets_received);
+        }
+        client.send(ack, 0, ack.length, remote.port, remote.host, function(err, bytes) {
+            console.log("sent an ack");
+        });
+
+        //update app to show progress of file recieved
+        //pass the html: ack/message.segmentNumber
+
     }
 
     //RECEIVED PACKET ACK
     if (message.packetType == 'dataAck') {
     //add it to the acks received; adjust window
-        if (message.ackNumber == windowStart) {
+        if (message.ackNumber == message.numSegments) {
+            console.log("We got them all!");
+            clearTimeout(timer);
+            client.close();
+        } else if (message.ackNumber == windowStart) {
             //Now we must adjust the window
-            windowStart = windowstart+1;
+            windowStart = windowStart+1;
             //send all N packets
-
+            //sendWindow(false, remote);
+            //update app to show progress of file recieved
         }
     }
 });
 
-sendHandshakeInit(FILENAME, 'text', HOST, PORT);
-sendHandshakeInit(FILENAME, 'text', HOST, PORT);
-console.log("finished the function");
-client.close();
+sendHandshakeInit(FILENAME, 'text', PORT, HOST);
+
+
 /*
 JSON OBJECTS
 Handshake init
 {
-    packetType: (handshakeInit, handshakeAck, data, dataAck)
+    packetType: 'handshakeInit'
     filetype: (text, file, or image),
     fileName:
     numSegments:,
@@ -117,7 +205,7 @@ Handshake init
 }
 Handshake ack
 {
-    packetType: (handshakeInit, handshakeAck, data, dataAck)
+    packetType:'handshakeAck'
     fileName:
     numSegments: 
     
@@ -125,7 +213,7 @@ Handshake ack
 
 Packet send
 {
-    packetType: (handshakeInit, handshakeAck, data, dataAck)
+    packetType:  'data'
     filetype: (text, file, or image),
     fileName:
     numSegments: 10,
@@ -135,8 +223,9 @@ Packet send
 
 packet ack
 {
-    packetType: (handshakeInit, handshakeAck, data, dataAck)
+    packetType:'dataAck'
     fileName:
+    numSegments
     ackNumber: 
 }
 

@@ -44,7 +44,7 @@ var dgram = require('dgram');
 
 fsImage
     //blockSize default : 204800 byte (200kb)
-    .avgSliceAsFile({blockSize: 100})
+    .avgSliceAsFile({blockSize: 100, destPath: 'test/temp'})
     .then(function (files) {
         //First, send the header message
         var PORT = 3333;

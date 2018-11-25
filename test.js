@@ -1,17 +1,11 @@
-var array = []
-array[1] = 'Hello'
-console.log(array[0] == undefined);
-
-let cue = 'The actors are here!';
-let cue2 = 'The actors are here again!'
-// However, the cue is not announced until at least 5000ms have
-// passed through the use of setTimeout
-function helloWorld(cue, cue2) {
-    console.log(cue + " " + cue2);
-
-}
-
-setInterval(helloWorld,500,cue2, cue);
-
-// This console log is executed right away
-console.log('An exploration of art and music. And now, as we wait for the actors...');  
+var array = [1, 2, 3, 4]
+array.forEachAsync(function (item, next) {
+    // do some async task
+    console.log(item + " started");
+    setTimeout(function () {
+        console.log(item + " done");
+        next();
+    }, 1000);
+}, function () {
+    console.log("All done!");
+});

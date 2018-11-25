@@ -11,7 +11,7 @@ function helloWorld(cue, cue2) {
 
 }
 
-setTimeout(helloWorld,2000,cue2, cue);
+setInterval(helloWorld,500,cue2, cue);
 
 // This console log is executed right away
 console.log('An exploration of art and music. And now, as we wait for the actors...');  

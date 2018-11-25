@@ -1,5 +1,5 @@
-var PORT1 = 3333;
-var PORT2 = 3334;
+var PORT1 = 3334;
+var PORT2 = 3335;
 var HudsonHOST = '10.102.167.182';
 var HOST = '127.0.0.1';
 
@@ -17,7 +17,7 @@ server.on('message', function(message, remote) {
   message=JSON.parse(message.toString());
   console.log(remote.address + ':' + remote.port + ' - ' + message);
   //acknowledge
-  var ack = Buffer.from("acknowledged");
+  var ack = Buffer.from("{type:handshakeAck}");
   server.send(ack, 0, ack.length, PORT1, HOST, function() {
 
   });
@@ -26,7 +26,7 @@ server.on('message', function(message, remote) {
   //two cases: receive a file, or receive an image
   var packets_received = new Array(message.numSegments)
   if (message.type == 'file') {
-    console.log("received the header message, file has " + message.numSegments + " segments.");
+    console.log("received the handshake message, file has " + message.numSegments + " segments.");
     var socket = dgram.createSocket('udp4');
     
     console.log("Bound socket to " + PORT2);

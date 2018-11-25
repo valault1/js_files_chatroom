@@ -1,0 +1,33 @@
+This is the text file that we are trying to break up.
+
+It is not very long.
+
+It has only perhaps 200 bytes of data, so it can be split into several chunks.
+
+
+This addition was actually to make it towhere it was really a full 200 bytes.This is the text file that we are trying to break up.
+
+It is not very long.
+
+It has only perhaps 200 bytes of data, so it can be split into several chunks.
+
+
+This addition was actually to make it towhere it was really a full 200 bytes.This is the text file that we are trying to break up.
+
+It is not very long.
+
+It has only perhaps 200 bytes of data, so it can be split into several chunks.
+
+
+This addition was actually to make it towhere it was really a full 200 bytes.This is the text file that we are trying to break up.
+
+It is not very long.
+
+It has only perhaps 200 bytes of data, so it can be split into several chunks.
+
+
+This addition was actually to make it towhere it was really a full 200 bytes.This is the text file that we arit towhere it was really a full 200 bytes.This is the text file that we are trying to break up.
+
+It is not very long.
+
+It has only perhaps 200 bytes of data, so it can be split into several chunks

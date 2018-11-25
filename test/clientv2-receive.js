@@ -13,11 +13,11 @@ var windowStart = 1;
 var packets_received;
 var packets_toSend =['UNINITIALIZED']; //contains the packets of data in file form.
 var acksReceived; //an integer containing the highest ack we have received
-var ackToSend = 0; //an integer containing the hight packet we have received, or in other words, the ack to send if we receive another packet
-var PORT = 3333;
+var ackToSend = 0;
+var PORT = 3334;
 var HOST = '127.0.0.1';
 var timer;
-var timeout = 1000;
+var timeout = 2000;
 
 var client = dgram.createSocket('udp4');
 client.bind(PORT);
@@ -31,11 +31,11 @@ client.bind(PORT);
 function sendHandshakeInit(fileName, fileType, port, host) {
     var handshake;
     var fsImage = fss(fileName);
-        fsImage.avgSliceAsFile({blockSize: 200})
+        fsImage.avgSliceAsFile({blockSize: 20})
         .then(function (files) {
         handshake = {packetType: 'handshakeInit', fileName: fileName, fileType: fileType, numSegments:files.length};
         handshake = Buffer.from(JSON.stringify(handshake));
-        packets_toSend = new Array(files.length);
+        packets_ToSend = new Array(files.length);
         var i = 0;
         console.log("files: " + files);
 
@@ -95,13 +95,14 @@ function reassembleFile(packets_received) {
     }
     console.log(data.toString());
 
-    fs.writeFile("test/temp/" + packets_received[0].fileName, data, function(err) {
+    fs.writeFile("temp/" + packets_received[0].fileName, data, function(err) {
         if(err) {
             return console.log(err);
         }
     
         console.log("The file was saved!");
     }); 
+    //store file
 }
 
 
@@ -110,11 +111,11 @@ function sendWindow(timedout, remote) {
     //remote is the people who sent us the handshake ack
     //if this was a timeout, then we want to increase the timer time
     
-    /*if (timedout && timedout < 5000) {
+    if (timedout && timedout < 5000) {
         timeout += 1000;
-    }*/
+    }
 
-    if (windowStart == packets_toSend.length +1) {
+    if (windowStart == packets_toSend.length) {
         console.log("received all acks! closing...");
         return;
     }
@@ -147,6 +148,7 @@ client.on('message', function(message, remote) {
     message = JSON.parse(message.toString());
     console.log("received packet from " + remote.address + ':' + remote.port + ': ' + JSON.stringify(message));
     //RECEIVED HANDSHAKE INIT:
+
     if (message.packetType == 'handshakeInit') {
         ackToSend = 0;
         packets_received = new Array(message.numSegments);
@@ -165,6 +167,7 @@ client.on('message', function(message, remote) {
     
     //RECEIVED DATA
     if (message.packetType == 'data') {
+        
         //send an acknowledgement, add it to our packets_received
         console.log("we received a data packet");
         //if it's the right packet, increment the ackToSend
@@ -179,12 +182,15 @@ client.on('message', function(message, remote) {
         if (ackToSend == message.numSegments) {
             reassembleFile(packets_received);
         }
-        client.send(ack, 0, ack.length, remote.port, remote.host, function(err, bytes) {
-            console.log("sent an ack");
-        });
+        if (Math.floor(Math.random * 10) < 4) {}
+            //drop packets 30% of the time
+            client.send(ack, 0, ack.length, remote.port, remote.host, function(err, bytes) {
+                console.log("sent an ack");
+            });
+        }
 
-        //update app to show progress of file received
-        //pass the html: ack/message.numSegments
+        //update app to show progress of file recieved
+        //pass the html: ack/message.segmentNumber
 
     }
 
@@ -205,7 +211,7 @@ client.on('message', function(message, remote) {
     }
 });
 
-sendHandshakeInit(FILENAME, 'text', PORT, HOST);
+//sendHandshakeInit(FILENAME, 'text', PORT, HOST);
 
 
 /*

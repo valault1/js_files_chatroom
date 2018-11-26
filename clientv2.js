@@ -18,6 +18,7 @@ var PORT = 3333;
 var HOST = '127.0.0.1';
 var timer;
 var timeout = 1000;
+var busy = false;
 
 var client = dgram.createSocket('udp4');
 client.bind(PORT);
@@ -76,13 +77,18 @@ function sendHandshakeInit(fileName, fileType, port, host) {
 
 function sendHandshakeAck(message, remote) {
     //message is already a JSON
-
-    var handshakeAck = {packetType : 'handshakeAck', fileName: message.fileName, numSegments: message.numSegments};
-    handshakeAck = Buffer.from(JSON.stringify(handshakeAck));
-    client.send(handshakeAck, 0, handshakeAck.length, remote.port, remote.host, function(err, bytes) {
-        if (err) throw err;
-        console.log('UDP handshake ack sent to ' + HOST + ":" + PORT);
-      });
+    if (!busy) {
+        var handshakeAck = {packetType : 'handshakeAck', fileName: message.fileName, numSegments: message.numSegments};
+        handshakeAck = Buffer.from(JSON.stringify(handshakeAck));
+        client.send(handshakeAck, 0, handshakeAck.length, remote.port, remote.host, function(err, bytes) {
+            if (err) throw err;
+            console.log('UDP handshake ack sent to ' + HOST + ":" + PORT);
+        });
+        busy = true;
+    }
+    else {
+        console.log("Sorry, it's busy");
+    }
 }
 
 function reassembleFile(packets_received) {
@@ -151,6 +157,7 @@ client.on('message', function(message, remote) {
         ackToSend = 0;
         packets_received = new Array(message.numSegments);
         sendHandshakeAck(message, remote);
+        busy = true;
 
     }
     
@@ -178,6 +185,7 @@ client.on('message', function(message, remote) {
         //if we have all packets, reassemble te file
         if (ackToSend == message.numSegments) {
             reassembleFile(packets_received);
+            busy = false;
         }
         client.send(ack, 0, ack.length, remote.port, remote.host, function(err, bytes) {
             console.log("sent an ack");
@@ -191,8 +199,12 @@ client.on('message', function(message, remote) {
     //RECEIVED PACKET ACK
     if (message.packetType == 'dataAck') {
     //add it to the acks received; adjust window
-        if (message.ackNumber == message.numSegments) {
+        if (busy != true) {
+            return;
+        }
+        else if (message.ackNumber == message.numSegments) {
             console.log("We got them all!");
+            busy = false;
             clearTimeout(timer);
             client.close();
         } else if (message.ackNumber == windowStart) {
@@ -205,7 +217,7 @@ client.on('message', function(message, remote) {
     }
 });
 
-sendHandshakeInit(FILENAME, 'text', PORT, HOST);
+sendHandshakeInit(FILENAME, 'text', 3334, HOST);
 
 
 /*

@@ -1,7 +1,3 @@
-var file = "Hello"
-var File = require('File')
-var FileReader = require('FileReader')
-var FileList = require('FileList')
 var fss = require('fs-slice');
 var fs = require('fs');
 var FILENAME = 'textfile3.txt';
@@ -107,7 +103,6 @@ function reassembleFile(packets_received) {
     
         console.log("The file was saved!");
     }); 
-    //store file
 }
 
 
@@ -153,7 +148,6 @@ client.on('message', function(message, remote) {
     message = JSON.parse(message.toString());
     console.log("received packet from " + remote.address + ':' + remote.port + ': ' + JSON.stringify(message));
     //RECEIVED HANDSHAKE INIT:
-
     if (message.packetType == 'handshakeInit') {
         ackToSend = 0;
         packets_received = new Array(message.numSegments);
@@ -177,10 +171,16 @@ client.on('message', function(message, remote) {
         //send an acknowledgement, add it to our packets_received
         console.log("we received a data packet");
         //if it's the right packet, increment the ackToSend
-        if (message.segmentNumber == ackToSend + 1 ) {
-            ackToSend = message.segmentNumber;
-            console.log("INCREASING ACK");
-            packets_received[message.segmentNumber-1] = message;
+
+        if (message.segmentNumber == ackToSend + 1) {
+            if (Math.floor(Math.random() * 10) != 9) {
+                ackToSend = message.segmentNumber;
+                console.log("INCREASING ACK");
+                packets_received[message.segmentNumber-1] = message;
+            }
+            else {
+                console.log("DROPPED PACKET");
+            }
         }
         var ack = {packetType: "dataAck", fileName: message.fileName, numSegments: message.numSegments, ackNumber: ackToSend};
         ack = Buffer.from(JSON.stringify(ack));

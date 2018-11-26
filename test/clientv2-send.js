@@ -1,7 +1,3 @@
-var file = "Hello"
-var File = require('File')
-var FileReader = require('FileReader')
-var FileList = require('FileList')
 var fss = require('fs-slice');
 var fs = require('fs');
 var FILENAME = 'textfile3.txt';
@@ -19,7 +15,6 @@ var HOST = '127.0.0.1';
 var timer;
 var timeout = 1000;
 var busy = false;
-var packet_sent_already
 
 var client = dgram.createSocket('udp4');
 client.bind(PORT);
@@ -32,7 +27,6 @@ client.bind(PORT);
 
 function sendHandshakeInit(fileName, fileType, port, host) {
     var handshake;
-    console.log("Splitting file...");
     var fsImage = fss(fileName);
         fsImage.avgSliceAsFile({blockSize: 200})
         .then(function (files) {
@@ -99,7 +93,7 @@ function reassembleFile(packets_received) {
     for (let packet of packets_received) {
         data = Buffer.concat[data, packet.data];
     }
-    print(data.toString());
+    console.log(data.toString());
 
     fs.writeFile("test/temp/" + packets_received[0].fileName, data, function(err) {
         if(err) {
@@ -135,7 +129,7 @@ function sendWindow(timedout, remote) {
         }); //send packet number i
     }
     //set a timer, to call this function again if we don't 
-    //timer = setTimeout(sendWindow, timeout, true, remote);
+    timer = setTimeout(sendWindow, timeout, true, remote);
     
 }
 client.on('listening', function() {

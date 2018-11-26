@@ -184,15 +184,16 @@ client.on('message', function(message, remote) {
         }
         var ack = {packetType: "dataAck", fileName: message.fileName, numSegments: message.numSegments, ackNumber: ackToSend};
         ack = Buffer.from(JSON.stringify(ack));
-
-        //if we have all packets, reassemble te file
-        if (ackToSend == message.numSegments && busy == true) {
-            reassembleFile(packets_received);
-            busy = false;
-        }
         client.send(ack, 0, ack.length, remote.port, remote.host, function(err, bytes) {
             console.log("sent an ack");
         });
+
+        //if we have all packets, reassemble te file
+        if (ackToSend == message.numSegments && busy == true) {
+            
+            reassembleFile(packets_received);
+            busy = false;
+        }
         
 
         //update app to show progress of file recieved

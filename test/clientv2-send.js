@@ -129,14 +129,13 @@ function sendWindow(timedout, remote) {
     clearTimeout(timer);
     //resend the packets in the window
     for (i = windowStart-1; i < windowStart+N-1 && i < packets_toSend.length; i++) {
-        console.log("i=" + i);
         
         client.send(packets_toSend[i], 0, packets_toSend[i].length, remote.port, remote.address, function(err, bytes) {
             console.log("Sent packet to " +  remote.address + ":" + remote.port);
         }); //send packet number i
     }
     //set a timer, to call this function again if we don't 
-    timer = setTimeout(sendWindow, timeout, true, remote);
+    //timer = setTimeout(sendWindow, timeout, true, remote);
     
 }
 client.on('listening', function() {
@@ -155,14 +154,14 @@ client.on('message', function(message, remote) {
     if (message.packetType == 'handshakeInit') {
         packets_received = new Array(message.numSegments);
         sendHandshakeAck(message, remote);
-        busy = true;
+        
 
     }
     
     //RECEIVED HANDSHAKE ACK
     if (message.packetType == 'handshakeAck') {
         //start Go-Back-N
-        acks_received = null;
+        //acks_received = null;//we're pretty sure this is unnecessary
         windowStart = 1;
         sendWindow(false, remote);
     }  
@@ -173,11 +172,10 @@ client.on('message', function(message, remote) {
         //send an acknowledgement, add it to our packets_received
         console.log("we received a data packet");
         //if it's the right packet, increment the ackToSend
-        if (message.segmentNumber = ackToSend + 1) {
-            if (Math.floor(Math.random * 10) > 8) {
-                ackToSend = message.segmentNumber;
-                packets_received[message.segmentNumber-1] = message;
-            }
+        if (message.segmentNumber == ackToSend + 1) {
+            ackToSend = message.segmentNumber;
+            packets_received[message.segmentNumber-1] = message;
+            
         }
         var ack = {packetType: "dataAck", fileName: message.fileName, numSegments: message.numSegments, ackNumber: ackToSend};
         ack = Buffer.from(JSON.stringify(ack));
@@ -214,12 +212,13 @@ client.on('message', function(message, remote) {
             console.log("Window now starts at " + windowStart);
             //send the next packet
             //sendWindow(false, remote);
-            if (windowStart + N - 1 < packets_toSend.length) {
+            if (windowStart + N - 2 < packets_toSend.length) {
                 console.log("sending packet "  + (windowStart + N - 1));
-                client.send(packets_toSend[windowStart + N - 1], 0, packets_toSend[windowStart + N - 1].length, remote.port, remote.address, function(err, bytes) {
+                client.send(packets_toSend[windowStart + N - 2], 0, packets_toSend[windowStart + N - 2].length, remote.port, remote.address, function(err, bytes) {
                     console.log("Sent packet to " +  remote.address + ":" + remote.port);
                 });
                 clearTimeout(timer);
+                console.log("Setting another timer, cleared Timeout...");
                 timer = setTimeout(sendWindow, timeout, true, remote);
             }
             //update app to show progress of file recieved
